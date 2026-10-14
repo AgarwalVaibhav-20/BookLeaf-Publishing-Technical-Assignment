@@ -337,7 +337,7 @@ export default function AdminDashboardPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f8f9fb] p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-[#f8f9fb] p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-[1600px] space-y-7">
         {/* Header with Title & Action Controls */}
         <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -400,7 +400,9 @@ export default function AdminDashboardPage() {
             </button>
 
             {/* Notification Bell */}
-            <NotificationBell />
+            <div className="hidden lg:block">
+              <NotificationBell />
+            </div>
 
             {/* Excel Download Button */}
             <button
@@ -880,6 +882,6 @@ export default function AdminDashboardPage() {
           <p>Admin Operations & AI Intelligence Hub</p>
         </footer>
       </div>
-    </main>
+    </div>
   );
 }

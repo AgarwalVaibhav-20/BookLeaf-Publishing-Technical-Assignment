@@ -616,7 +616,7 @@ export default function AdminTicketDetailsPage() {
     assignedTo.toLowerCase() === "admin";
 
   return (
-    <main className="min-h-screen bg-[#f8f9fb] p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-[#f8f9fb] p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-[1500px] space-y-6">
         {/* Breadcrumb */}
         <Link
@@ -1146,9 +1146,9 @@ export default function AdminTicketDetailsPage() {
                 <h2 className="font-semibold text-gray-900">
                   Ticket Management
                 </h2>
-                <span className="text-[11px] font-medium text-emerald-600">
+                {/* <span className="text-[11px] font-medium text-emerald-600">
                   Live MongoDB
-                </span>
+                </span> */}
               </div>
 
               <div className="mt-4 space-y-5">
@@ -1553,6 +1553,6 @@ export default function AdminTicketDetailsPage() {
           <span>Admin Ticket Workspace • Powered by Gemini AI</span>
         </footer>
       </div>
-    </main>
+    </div>
   );
 }

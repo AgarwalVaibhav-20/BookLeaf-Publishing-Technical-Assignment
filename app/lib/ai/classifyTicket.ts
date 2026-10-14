@@ -124,7 +124,10 @@ Return only a JSON object with:
             },
             required: ["category", "priority", "confidence_score", "reason"],
           },
-          maxOutputTokens: 250,
+          maxOutputTokens: 1000,
+          thinkingConfig: {
+            thinkingBudget: 0,
+          },
           temperature: 0.1,
         },
       });

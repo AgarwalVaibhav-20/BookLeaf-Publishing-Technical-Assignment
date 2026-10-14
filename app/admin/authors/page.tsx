@@ -18,6 +18,7 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  CalendarDays,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -261,7 +262,7 @@ export default function AdminAuthorsPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#fff8f8] px-4 py-6 text-slate-800 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-[#fff8f8] px-4 py-6 text-slate-800 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-[1450px] space-y-6">
         {/* Page heading */}
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -383,7 +384,143 @@ export default function AdminAuthorsPage() {
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          {/* Mobile Cards (Visible on < md screens) */}
+          <div className="p-3.5 space-y-3 md:hidden">
+            {loading ? (
+              <div className="py-16 text-center">
+                <LoaderCircle
+                  size={28}
+                  className="mx-auto animate-spin text-[#e76577]"
+                />
+                <p className="mt-3 text-sm text-slate-500">
+                  Loading authors...
+                </p>
+              </div>
+            ) : paginatedAuthors.length === 0 ? (
+              <div className="px-4 py-16 text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-rose-50 text-[#e76577]">
+                  {error ? (
+                    <AlertCircle size={25} />
+                  ) : (
+                    <Users size={25} />
+                  )}
+                </div>
+                <p className="mt-4 font-semibold text-slate-800">
+                  {error
+                    ? "Could not load authors"
+                    : "No authors found"}
+                </p>
+                <p className="mt-1 text-xs text-slate-500">
+                  {error
+                    ? "Check your API route and authentication."
+                    : search
+                      ? "Try another search term."
+                      : "Add your first author to get started."}
+                </p>
+              </div>
+            ) : (
+              paginatedAuthors.map((author) => (
+                <div
+                  key={author.author_id}
+                  className="rounded-2xl border border-slate-100 bg-white p-4 shadow-xs transition hover:border-rose-200"
+                >
+                  {/* Top row: Avatar, Name, ID, Books badge */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-rose-100 text-sm font-bold text-[#d95166]">
+                        {author.name
+                          .split(" ")
+                          .map((part) => part[0])
+                          .join("")
+                          .slice(0, 2)
+                          .toUpperCase()}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-bold text-slate-900">
+                          {author.name}
+                        </p>
+                        <p className="text-[11px] font-medium text-slate-400">
+                          {author.author_id}
+                        </p>
+                      </div>
+                    </div>
+
+                    <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-rose-50 px-2.5 py-1 text-xs font-semibold text-[#c94e61]">
+                      <BookOpen size={13} />
+                      <span>
+                        {author.books?.length ?? 0}{" "}
+                        {author.books?.length === 1 ? "Book" : "Books"}
+                      </span>
+                    </span>
+                  </div>
+
+                  {/* Details Grid */}
+                  <div className="mt-3.5 grid grid-cols-1 gap-2 rounded-xl bg-slate-50/80 p-3 text-xs text-slate-600 sm:grid-cols-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Mail size={13} className="shrink-0 text-slate-400" />
+                      <span className="truncate" title={author.email}>
+                        {author.email}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Phone size={13} className="shrink-0 text-slate-400" />
+                      <span className="truncate">
+                        {author.phone || "No phone provided"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 min-w-0">
+                      <MapPin size={13} className="shrink-0 text-slate-400" />
+                      <span className="truncate">
+                        {author.city || "No city specified"}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 min-w-0">
+                      <CalendarDays size={13} className="shrink-0 text-slate-400" />
+                      <span className="truncate">
+                        Joined {formatDate(author.joined_date)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="mt-3.5 flex items-center justify-end gap-2 border-t border-slate-100 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedAuthor(author)}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:border-rose-200 hover:bg-rose-50/50 hover:text-[#e76577] active:scale-95"
+                    >
+                      <Eye size={13} />
+                      <span>View</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(author)}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-2xs transition hover:border-rose-200 hover:bg-rose-50/50 hover:text-[#e76577] active:scale-95"
+                    >
+                      <Pencil size={13} />
+                      <span>Edit</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(author)}
+                      className="inline-flex items-center gap-1.5 rounded-xl border border-rose-200 bg-rose-50/50 px-3 py-1.5 text-xs font-semibold text-rose-600 shadow-2xs transition hover:bg-rose-100 hover:text-rose-700 active:scale-95"
+                    >
+                      <Trash2 size={13} />
+                      <span>Delete</span>
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Desktop Table (Hidden on mobile < md) */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full min-w-[900px] text-left">
               <thead className="bg-slate-50/80">
                 <tr className="text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -803,7 +940,7 @@ export default function AdminAuthorsPage() {
           box-shadow: 0 0 0 3px rgb(231 101 119 / 12%);
         }
       `}</style>
-    </main>
+    </div>
   );
 }
 

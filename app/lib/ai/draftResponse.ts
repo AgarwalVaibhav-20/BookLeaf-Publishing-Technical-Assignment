@@ -103,7 +103,10 @@ Draft your complete response directly below:
         model,
         contents: prompt,
         config: {
-          maxOutputTokens: 600,
+          maxOutputTokens: 1000,
+          thinkingConfig: {
+            thinkingBudget: 0,
+          },
           temperature: 0.3,
         },
       });

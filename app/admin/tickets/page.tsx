@@ -270,6 +270,92 @@ export default function AdminTicketsPage() {
     }
   }
 
+  async function updatePriority(
+    id: string,
+    mongoId: string,
+    priority: TicketPriority,
+  ) {
+    const previous = tickets.find((t) => t.id === id)?.priority;
+    setTickets((current) =>
+      current.map((ticket) =>
+        ticket.id === id ? { ...ticket, priority } : ticket,
+      ),
+    );
+
+    try {
+      const response = await fetch(
+        `/api/admin/tickets/${encodeURIComponent(mongoId)}/priority`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ priority }),
+        },
+      );
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to update priority.");
+      }
+
+      toast.success(`Ticket ${id} priority overridden to "${priority}"`);
+    } catch (err) {
+      if (previous) {
+        setTickets((current) =>
+          current.map((ticket) =>
+            ticket.id === id ? { ...ticket, priority: previous } : ticket,
+          ),
+        );
+      }
+      toast.error(
+        err instanceof Error ? err.message : "Could not update priority.",
+      );
+    }
+  }
+
+  async function updateCategory(
+    id: string,
+    mongoId: string,
+    category: string,
+  ) {
+    const previous = tickets.find((t) => t.id === id)?.category;
+    setTickets((current) =>
+      current.map((ticket) =>
+        ticket.id === id ? { ...ticket, category } : ticket,
+      ),
+    );
+
+    try {
+      const response = await fetch(
+        `/api/admin/tickets/${encodeURIComponent(mongoId)}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ category }),
+        },
+      );
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to update category.");
+      }
+
+      toast.success(`Ticket ${id} category overridden to "${category}"`);
+    } catch (err) {
+      if (previous) {
+        setTickets((current) =>
+          current.map((ticket) =>
+            ticket.id === id ? { ...ticket, category: previous } : ticket,
+          ),
+        );
+      }
+      toast.error(
+        err instanceof Error ? err.message : "Could not update category.",
+      );
+    }
+  }
+
   function resetFilters() {
     setSearch("");
     setStatusFilter("All");
@@ -278,7 +364,7 @@ export default function AdminTicketsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f8f9fb] p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-[#f8f9fb] p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-[1600px] space-y-7">
         <section className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
@@ -292,17 +378,9 @@ export default function AdminTicketsPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <NotificationBell />
-            {/* <button
-              type="button"
-              onClick={() => {
-                alert("Connect this action to your ticket creation API.");
-              }}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#e76577] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[#d95468]"
-            >
-              <Plus size={18} />
-              Create Ticket
-            </button> */}
+            <div className="hidden lg:block">
+              <NotificationBell />
+            </div>
           </div>
         </section>
 
@@ -462,90 +540,232 @@ export default function AdminTicketsPage() {
               </button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1100px] text-left text-sm">
-                <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
-                  <tr>
-                    <th className="px-5 py-4 font-medium">Ticket</th>
-                    <th className="px-5 py-4 font-medium">Author</th>
-                    <th className="px-5 py-4 font-medium">Category</th>
-                    <th className="px-5 py-4 font-medium">Priority</th>
-                    <th className="px-5 py-4 font-medium">Status</th>
-                    <th className="px-5 py-4 font-medium">Assigned To</th>
-                    <th className="px-5 py-4 font-medium">Created</th>
-                    <th className="px-5 py-4 font-medium">Action</th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-gray-100">
-                  {filteredTickets.map((ticket) => (
-                    <tr
-                      key={ticket.id}
-                      className="transition hover:bg-gray-50/80"
-                    >
-                      <td className="px-5 py-4">
-                        <p className="font-semibold text-[#e76577]">
+            <>
+              {/* Mobile Ticket Cards (Visible on < md screens) */}
+              <div className="p-3.5 space-y-3.5 md:hidden">
+                {filteredTickets.map((ticket) => (
+                  <div
+                    key={ticket.id}
+                    className="rounded-2xl border border-gray-100 bg-white p-4 shadow-xs transition hover:border-rose-200"
+                  >
+                    {/* Header: ID, Date, Status */}
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="text-xs font-bold text-[#e76577]">
                           {ticket.id}
-                        </p>
-                        <p className="mt-1 max-w-[230px] truncate text-gray-700">
+                        </span>
+                        <h3 className="mt-0.5 text-sm font-semibold text-gray-900 line-clamp-1">
                           {ticket.subject}
-                        </p>
-                        <p className="mt-1 max-w-[260px] truncate text-xs text-gray-400">
-                          {ticket.latestMessage || "No message provided"}
-                        </p>
-                        {ticket.messageCount > 0 && (
-                          <p className="mt-1 text-[11px] font-medium text-[#e76577]">
-                            {ticket.messageCount}{" "}
-                            {ticket.messageCount === 1 ? "reply" : "replies"}
-                          </p>
-                        )}
-                      </td>
+                        </h3>
+                      </div>
+                      <select
+                        aria-label={`Change status for ${ticket.id}`}
+                        value={ticket.status}
+                        onChange={(e) =>
+                          updateStatus(
+                            ticket.id,
+                            ticket.mongoId,
+                            e.target.value as TicketStatus,
+                          )
+                        }
+                        className="rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-[#e76577]"
+                      >
+                        <option value="Open">Open</option>
+                        <option value="In Progress">In Progress</option>
+                        <option value="Resolved">Resolved</option>
+                        <option value="Closed">Closed</option>
+                      </select>
+                    </div>
 
-                      <td className="px-5 py-4">
-                        <p className="font-medium text-gray-800">
-                          {ticket.author}
-                        </p>
-                        <p className="mt-1 text-xs text-gray-400">
-                          {ticket.email}
-                        </p>
-                      </td>
+                    <p className="mt-1 line-clamp-2 text-xs text-gray-500">
+                      {ticket.latestMessage || "No message provided"}
+                    </p>
 
-                      <td className="px-5 py-4 text-gray-600">
-                        {ticket.category}
-                      </td>
+                    {/* Author Info */}
+                    <div className="mt-3 flex items-center justify-between text-xs text-gray-600 rounded-xl bg-gray-50/70 p-2.5">
+                      <div>
+                        <p className="font-semibold text-gray-800">{ticket.author}</p>
+                        <p className="text-[10px] text-gray-400">{ticket.email}</p>
+                      </div>
+                      <span className="text-[10px] text-gray-400">{ticket.createdAt}</span>
+                    </div>
 
-                      <td className="px-5 py-4">
-                        <div className="flex flex-col items-start gap-1">
-                          <Badge className={priorityStyles[ticket.priority]}>
-                            {ticket.priority}
-                          </Badge>
+                    {/* Classification & Priority Controls */}
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <label className="text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                          Category
+                        </label>
+                        <select
+                          value={ticket.category}
+                          onChange={(e) =>
+                            updateCategory(ticket.id, ticket.mongoId, e.target.value)
+                          }
+                          className="mt-1 w-full truncate rounded-lg border border-gray-200 bg-white px-2 py-1 text-xs outline-none focus:border-[#e76577]"
+                        >
+                          {categories.map((c) => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="flex items-center justify-between text-[10px] font-medium uppercase tracking-wide text-gray-400">
+                          <span>Priority</span>
                           {typeof ticket.ai_confidence_score === "number" && (
-                            <span className="text-[10px] font-medium text-emerald-600">
-                              AI: {ticket.ai_confidence_score}%
+                            <span className="text-emerald-600 font-bold">
+                              {ticket.ai_confidence_score}%
                             </span>
                           )}
-                        </div>
-                      </td>
-
-                      <td className="px-5 py-4">
+                        </label>
                         <select
-                          aria-label={`Change status for ${ticket.id}`}
-                          value={ticket.status}
+                          value={ticket.priority}
                           onChange={(e) =>
-                            updateStatus(
-                              ticket.id,
-                              ticket.mongoId,
-                              e.target.value as TicketStatus,
-                            )
+                            updatePriority(ticket.id, ticket.mongoId, e.target.value as TicketPriority)
                           }
-                          className="max-w-[145px] rounded-lg border border-gray-200 bg-white px-2 py-2 text-xs outline-none focus:border-[#e76577]"
+                          className={`mt-1 w-full rounded-lg px-2 py-1 text-xs font-semibold outline-none ring-1 ring-inset ${priorityStyles[ticket.priority]}`}
                         >
-                          <option value="Open">Open</option>
-                          <option value="In Progress">In Progress</option>
-                          <option value="Resolved">Resolved</option>
-                          <option value="Closed">Closed</option>
+                          <option value="Critical">Critical</option>
+                          <option value="High">High</option>
+                          <option value="Medium">Medium</option>
+                          <option value="Low">Low</option>
                         </select>
-                      </td>
+                      </div>
+                    </div>
+
+                    {/* Footer action */}
+                    <div className="mt-3.5 flex items-center justify-between border-t border-gray-100 pt-3">
+                      <span className="text-[11px] text-gray-400">
+                        {ticket.messageCount > 0 ? `${ticket.messageCount} messages` : "No replies"}
+                      </span>
+                      <Link
+                        href={`/admin/tickets/${ticket.mongoId}`}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:border-[#e76577] hover:text-[#e76577]"
+                      >
+                        <Eye size={13} />
+                        <span>View Ticket</span>
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Desktop Table (Hidden on mobile < md) */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full min-w-[1100px] text-left text-sm">
+                  <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                    <tr>
+                      <th className="px-5 py-4 font-medium">Ticket</th>
+                      <th className="px-5 py-4 font-medium">Author</th>
+                      <th className="px-5 py-4 font-medium">Category</th>
+                      <th className="px-5 py-4 font-medium">Priority</th>
+                      <th className="px-5 py-4 font-medium">Status</th>
+                      <th className="px-5 py-4 font-medium">Assigned To</th>
+                      <th className="px-5 py-4 font-medium">Created</th>
+                      <th className="px-5 py-4 font-medium">Action</th>
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredTickets.map((ticket) => (
+                      <tr
+                        key={ticket.id}
+                        className="transition hover:bg-gray-50/80"
+                      >
+                        <td className="px-5 py-4">
+                          <p className="font-semibold text-[#e76577]">
+                            {ticket.id}
+                          </p>
+                          <p className="mt-1 max-w-[230px] truncate text-gray-700">
+                            {ticket.subject}
+                          </p>
+                          <p className="mt-1 max-w-[260px] truncate text-xs text-gray-400">
+                            {ticket.latestMessage || "No message provided"}
+                          </p>
+                          {ticket.messageCount > 0 && (
+                            <p className="mt-1 text-[11px] font-medium text-[#e76577]">
+                              {ticket.messageCount}{" "}
+                              {ticket.messageCount === 1 ? "reply" : "replies"}
+                            </p>
+                          )}
+                        </td>
+
+                        <td className="px-5 py-4">
+                          <p className="font-medium text-gray-800">
+                            {ticket.author}
+                          </p>
+                          <p className="mt-1 text-xs text-gray-400">
+                            {ticket.email}
+                          </p>
+                        </td>
+
+                        <td className="px-5 py-4 text-gray-600">
+                          <select
+                            aria-label={`Override category for ${ticket.id}`}
+                            value={ticket.category}
+                            onChange={(e) =>
+                              updateCategory(
+                                ticket.id,
+                                ticket.mongoId,
+                                e.target.value,
+                              )
+                            }
+                            className="max-w-[170px] truncate rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs text-gray-700 outline-none focus:border-[#e76577] cursor-pointer"
+                          >
+                            {categories.map((c) => (
+                              <option key={c} value={c}>
+                                {c}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+
+                        <td className="px-5 py-4">
+                          <div className="flex flex-col items-start gap-1">
+                            <select
+                              aria-label={`Override priority for ${ticket.id}`}
+                              value={ticket.priority}
+                              onChange={(e) =>
+                                updatePriority(
+                                  ticket.id,
+                                  ticket.mongoId,
+                                  e.target.value as TicketPriority,
+                                )
+                              }
+                              className={`rounded-lg px-2.5 py-1 text-xs font-semibold outline-none ring-1 ring-inset transition cursor-pointer ${priorityStyles[ticket.priority]}`}
+                            >
+                              <option value="Critical">Critical</option>
+                              <option value="High">High</option>
+                              <option value="Medium">Medium</option>
+                              <option value="Low">Low</option>
+                            </select>
+                            {typeof ticket.ai_confidence_score === "number" && (
+                              <span className="text-[10px] font-medium text-emerald-600">
+                                AI: {ticket.ai_confidence_score}%
+                              </span>
+                            )}
+                          </div>
+                        </td>
+
+                        <td className="px-5 py-4">
+                          <select
+                            aria-label={`Change status for ${ticket.id}`}
+                            value={ticket.status}
+                            onChange={(e) =>
+                              updateStatus(
+                                ticket.id,
+                                ticket.mongoId,
+                                e.target.value as TicketStatus,
+                              )
+                            }
+                            className="max-w-[145px] rounded-lg border border-gray-200 bg-white px-2 py-2 text-xs outline-none focus:border-[#e76577]"
+                          >
+                            <option value="Open">Open</option>
+                            <option value="In Progress">In Progress</option>
+                            <option value="Resolved">Resolved</option>
+                            <option value="Closed">Closed</option>
+                          </select>
+                        </td>
 
                       <td className="px-5 py-4 text-gray-600">
                         {ticket.assignedTo}
@@ -570,6 +790,7 @@ export default function AdminTicketsPage() {
                 </tbody>
               </table>
             </div>
+          </>
           )}
 
           <div className="border-t border-gray-100 px-5 py-4 text-xs text-gray-400">
@@ -578,6 +799,6 @@ export default function AdminTicketsPage() {
           </div>
         </section>
       </div>
-    </main>
+    </div>
   );
 }
