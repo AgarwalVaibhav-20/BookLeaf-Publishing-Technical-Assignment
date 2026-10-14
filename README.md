@@ -148,7 +148,7 @@ The system is built on a modular, decoupled architecture adhering to clean codin
 1. **Next.js 16 App Router**: Server Components for static shells and secure backend API routes; Client Components for real-time interactive widgets (ticket messaging, notification dropdown, filters).
 2. **MongoDB with Mongoose**: Document-oriented data modeling ideal for tickets with embedded subdocuments (`messages[]`, `internal_notes[]`, `ai_tokens_used`).
 3. **Dedicated Socket.IO Server (`app/server/socket-server.ts`)**: Provides bi-directional WebSockets on port 4001 syncing ticket replies and notifications with a 6-second polling fallback.
-4. **Resilient AI Subsystem (`app/lib/ai/`)**: Isolates Gemini integration into distinct, testable modules (`retry.ts`, `knowledgeBase.ts`, `classfyTicket.ts`, `draftResponse.ts`).
+4. **Resilient AI Subsystem (`app/lib/ai/`)**: Isolates Gemini integration into distinct, testable modules (`retry.ts`, `knowledgeBase.ts`, `classifyTicket.ts`, `draftResponse.ts`).
 
 ---
 

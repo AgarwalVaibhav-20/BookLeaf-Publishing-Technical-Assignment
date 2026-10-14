@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { classifyTicket } from "@/app/lib/ai/classfyTicket";
+import { classifyTicket } from "@/app/lib/ai/classifyTicket";
 import { sanitizeErrorMessage } from "@/app/lib/ai/retry";
 import dbConnect from "@/app/lib/dbConnect";
 import { verifyToken } from "@/app/lib/jwt";
