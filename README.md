@@ -21,6 +21,7 @@
 8. [Local Installation & Setup Guide](#-8-local-installation--setup-guide)
 9. [Automated Test Suite (`npm test`)](#-9-automated-test-suite)
 10. [1-Page Architectural Write-Up](#-10-architectural-write-up)
+11. [Known Limitations & Future Improvements](#-11-known-limitations--things-to-improve)
 
 ---
 
@@ -398,3 +399,18 @@ If deploying this application to enterprise production at BookLeaf scale (1,200+
 2. **Redis Message Broker**: Replacing the single-node Socket.IO instance with Redis pub/sub to support horizontal auto-scaling across multiple server instances.
 3. **Background Job Queue (BullMQ / AWS SQS)**: Moving AI response drafting and automated classification into an asynchronous background queue with Dead Letter Queues (DLQ).
 4. **CRM & Distribution Webhooks**: Ingesting real-time inventory webhooks from Amazon KDP and IngramSpark to automate catalog availability tickets without manual author intervention.
+
+---
+
+## ⚠️ 11. Known Limitations & Things to Improve
+
+In line with the assignment brief, here is a transparent breakdown of current limitations and enhancements planned for subsequent phases:
+
+| Feature Area | Current Implementation | Production Enhancement Given More Time |
+| :--- | :--- | :--- |
+| **File Attachments** | Frontend file picker mock (in accordance with assessment specs without mandatory cloud storage dependencies). | Connect AWS S3 / Cloudflare R2 presigned upload URLs with automated ClamAV antivirus scanning for manuscripts and photo proofs. |
+| **WebSocket Scaling** | Single-node companion Socket.IO server on port 4001 with 6s polling fallback. | Introduce `@socket.io/redis-adapter` backed by Redis / Upstash to distribute WebSocket rooms seamlessly across multi-container clusters. |
+| **Async AI Background Queue** | AI classification runs synchronously inside the API route with bounded backoff and timeout fallbacks. | Offload classification and draft generation to an asynchronous job queue (BullMQ or Inngest) with Dead Letter Queues (DLQ) to protect API route concurrency during high-volume spikes. |
+| **E-Commerce Webhooks** | Distribution and stock status managed through the author/admin portal and REST endpoints. | Ingest automated webhooks directly from Amazon KDP, IngramSpark, and Flipkart to proactively alert authors when their titles go live or need reprints. |
+| **Agent Response Editor** | Markdown/plain-text editing area for ticket replies. | Integrate a rich-text WYSIWYG editor (such as Tiptap) with pre-formatted publishing contract templates, canned responses, and snippet insertions. |
+
