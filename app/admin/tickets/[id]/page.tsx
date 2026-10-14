@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -172,10 +178,13 @@ export default function AdminTicketDetailsPage() {
 
   // Request ticket details from backend
   const requestTicket = useCallback(async (): Promise<TicketDetails> => {
-    const response = await fetch(`/api/tickets/${encodeURIComponent(ticketId)}`, {
-      credentials: "include",
-      cache: "no-store",
-    });
+    const response = await fetch(
+      `/api/tickets/${encodeURIComponent(ticketId)}`,
+      {
+        credentials: "include",
+        cache: "no-store",
+      },
+    );
     const contentType = response.headers.get("content-type") ?? "";
 
     if (!contentType.includes("application/json")) {
@@ -218,7 +227,9 @@ export default function AdminTicketDetailsPage() {
 
         const data = await response.json();
         if (!response.ok || !data.success) {
-          throw new Error(data.message || "Failed to generate AI draft response.");
+          throw new Error(
+            data.message || "Failed to generate AI draft response.",
+          );
         }
 
         if (data.draft) {
@@ -319,7 +330,17 @@ export default function AdminTicketDetailsPage() {
 
     socket.on("message:new", onSocketNewMessage);
 
+    const interval = setInterval(() => {
+      requestTicket()
+        .then((updated) => {
+          setTicket(updated);
+          setStatus(updated.status);
+        })
+        .catch(() => {});
+    }, 6000);
+
     return () => {
+      clearInterval(interval);
       socket.off("message:new", onSocketNewMessage);
       if (ticketId) {
         try {
@@ -509,10 +530,15 @@ export default function AdminTicketDetailsPage() {
   function handleUseDraft() {
     if (!aiDraft) return;
     setReply(aiDraft);
-    toast.success("Draft inserted into reply box. Review and edit before sending!");
+    toast.success(
+      "Draft inserted into reply box. Review and edit before sending!",
+    );
     setTimeout(() => {
       replyTextareaRef.current?.focus();
-      replyTextareaRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      replyTextareaRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
     }, 100);
   }
 
@@ -584,7 +610,9 @@ export default function AdminTicketDetailsPage() {
           <h1 className="mt-4 text-xl font-bold text-gray-900">
             Unable to load ticket
           </h1>
-          <p className="mt-2 text-sm text-gray-500">{error || "Ticket not found."}</p>
+          <p className="mt-2 text-sm text-gray-500">
+            {error || "Ticket not found."}
+          </p>
           <Link
             href="/admin/tickets"
             className="mt-5 inline-flex rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
@@ -629,7 +657,10 @@ export default function AdminTicketDetailsPage() {
               {ticket.ai_classification_status === "failed" ? (
                 <span
                   className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700"
-                  title={ticket.ai_error || "AI classification was unavailable at ticket creation"}
+                  title={
+                    ticket.ai_error ||
+                    "AI classification was unavailable at ticket creation"
+                  }
                 >
                   <AlertCircle size={12} />
                   AI Fallback
@@ -656,7 +687,8 @@ export default function AdminTicketDetailsPage() {
               {ticket.subject}
             </h1>
             <p className="mt-2 text-sm text-gray-500">
-              Review author inquiry, review AI-drafted policy response, collaborate with internal notes, and reply.
+              Review author inquiry, review AI-drafted policy response,
+              collaborate with internal notes, and reply.
             </p>
           </div>
 
@@ -766,7 +798,9 @@ export default function AdminTicketDetailsPage() {
                     Conversation History
                   </h2>
                   <p className="mt-1 text-sm text-gray-500">
-                    {messages.length + 1} message{messages.length + 1 === 1 ? "" : "s"} in this thread (visible to author)
+                    {messages.length + 1} message
+                    {messages.length + 1 === 1 ? "" : "s"} in this thread
+                    (visible to author)
                   </p>
                 </div>
                 <button
@@ -807,7 +841,10 @@ export default function AdminTicketDetailsPage() {
                   const isAdmin = item.senderRole === "Admin";
 
                   return (
-                    <div key={item._id} className="flex items-start gap-3 sm:gap-4">
+                    <div
+                      key={item._id}
+                      className="flex items-start gap-3 sm:gap-4"
+                    >
                       <div
                         className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
                           isAdmin
@@ -875,7 +912,8 @@ export default function AdminTicketDetailsPage() {
                           </span>
                         </div>
                         <p className="text-xs text-gray-500">
-                          Tailored response based on author inquiry & publishing guidelines
+                          Tailored response based on author inquiry & publishing
+                          guidelines
                         </p>
                       </div>
                     </div>
@@ -910,9 +948,13 @@ export default function AdminTicketDetailsPage() {
                       >
                         <RotateCcw
                           size={13}
-                          className={generatingDraft ? "animate-spin text-[#e76577]" : ""}
+                          className={
+                            generatingDraft ? "animate-spin text-[#e76577]" : ""
+                          }
                         />
-                        <span>{generatingDraft ? "Drafting..." : "Regenerate"}</span>
+                        <span>
+                          {generatingDraft ? "Drafting..." : "Regenerate"}
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -921,13 +963,18 @@ export default function AdminTicketDetailsPage() {
                   <div className="mt-4">
                     {generatingDraft ? (
                       <div className="flex items-center gap-3 rounded-xl border border-dashed border-rose-200 bg-rose-50/40 p-5 text-sm text-gray-600">
-                        <Loader2 className="animate-spin text-[#e76577]" size={20} />
+                        <Loader2
+                          className="animate-spin text-[#e76577]"
+                          size={20}
+                        />
                         <div>
                           <p className="font-semibold text-gray-800">
                             Consulting BookLeaf Knowledge Base...
                           </p>
                           <p className="text-xs text-gray-500">
-                            Analyzing targeted {ticket.category || "General"} policy &amp; conversation history with bounded tokens.
+                            Analyzing targeted {ticket.category || "General"}{" "}
+                            policy &amp; conversation history with bounded
+                            tokens.
                           </p>
                         </div>
                       </div>
@@ -947,7 +994,10 @@ export default function AdminTicketDetailsPage() {
                             Retry AI Generation
                           </button>
                           <span className="text-red-300">•</span>
-                          <span className="text-gray-600">Manual response editor remains fully functional below.</span>
+                          <span className="text-gray-600">
+                            Manual response editor remains fully functional
+                            below.
+                          </span>
                         </div>
                       </div>
                     ) : aiDraft ? (
@@ -958,7 +1008,8 @@ export default function AdminTicketDetailsPage() {
 
                         <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
                           <p className="text-xs text-gray-400">
-                            Review and customize in the reply composer below before sending.
+                            Review and customize in the reply composer below
+                            before sending.
                           </p>
                           <button
                             type="button"
@@ -973,9 +1024,12 @@ export default function AdminTicketDetailsPage() {
                     ) : (
                       <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50/50 p-6 text-center">
                         <Bot size={28} className="mb-2 text-gray-400" />
-                        <p className="text-xs font-medium text-gray-700">No AI draft generated yet</p>
+                        <p className="text-xs font-medium text-gray-700">
+                          No AI draft generated yet
+                        </p>
                         <p className="mt-1 max-w-sm text-[11px] text-gray-400">
-                          Generate an on-demand response draft based on BookLeaf publishing guidelines and ticket context.
+                          Generate an on-demand response draft based on BookLeaf
+                          publishing guidelines and ticket context.
                         </p>
                         <button
                           type="button"
@@ -1077,7 +1131,9 @@ export default function AdminTicketDetailsPage() {
                   <p className="font-semibold text-gray-900">
                     {ticket.author_name}
                   </p>
-                  <p className="mt-0.5 text-xs text-gray-500">BookLeaf Author</p>
+                  <p className="mt-0.5 text-xs text-gray-500">
+                    BookLeaf Author
+                  </p>
                 </div>
               </div>
 
@@ -1100,7 +1156,9 @@ export default function AdminTicketDetailsPage() {
             {/* Ticket Management (Persisted directly to MongoDB) */}
             <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-                <h2 className="font-semibold text-gray-900">Ticket Management</h2>
+                <h2 className="font-semibold text-gray-900">
+                  Ticket Management
+                </h2>
                 <span className="text-[11px] font-medium text-emerald-600">
                   Live MongoDB
                 </span>
@@ -1118,7 +1176,10 @@ export default function AdminTicketDetailsPage() {
                     </label>
                     {updatingStatus && (
                       <span className="flex items-center gap-1 text-[11px] text-gray-400">
-                        <Loader2 size={11} className="animate-spin text-[#e76577]" />
+                        <Loader2
+                          size={11}
+                          className="animate-spin text-[#e76577]"
+                        />
                         Saving...
                       </span>
                     )}
@@ -1235,10 +1296,13 @@ export default function AdminTicketDetailsPage() {
                         );
                         const data = await response.json();
                         if (!response.ok) {
-                          throw new Error(data.message || "Could not update priority.");
+                          throw new Error(
+                            data.message || "Could not update priority.",
+                          );
                         }
                         setPriority(newPriority);
-                        if (ticket) setTicket({ ...ticket, priority: newPriority });
+                        if (ticket)
+                          setTicket({ ...ticket, priority: newPriority });
                         toast.success(`Priority updated to ${newPriority}`);
                       } catch (err) {
                         const msg =
@@ -1275,7 +1339,10 @@ export default function AdminTicketDetailsPage() {
                     </label>
                     {updatingAssignedTo && (
                       <span className="flex items-center gap-1 text-[11px] text-gray-400">
-                        <Loader2 size={11} className="animate-spin text-[#e76577]" />
+                        <Loader2
+                          size={11}
+                          className="animate-spin text-[#e76577]"
+                        />
                         Saving...
                       </span>
                     )}
@@ -1292,7 +1359,9 @@ export default function AdminTicketDetailsPage() {
                     <option value="Support Team">Support Team</option>
                     <option value="Admin">Admin</option>
                     {currentAdminName && currentAdminName !== "Admin" && (
-                      <option value={currentAdminName}>{currentAdminName}</option>
+                      <option value={currentAdminName}>
+                        {currentAdminName}
+                      </option>
                     )}
                     {assignedTo &&
                       ![
@@ -1306,7 +1375,9 @@ export default function AdminTicketDetailsPage() {
                   </select>
 
                   {assignedToError && (
-                    <p className="mt-1 text-xs text-red-600">{assignedToError}</p>
+                    <p className="mt-1 text-xs text-red-600">
+                      {assignedToError}
+                    </p>
                   )}
 
                   {/* Assign to Me Button */}
@@ -1351,7 +1422,8 @@ export default function AdminTicketDetailsPage() {
                   </div>
                 </div>
                 <span className="rounded-full border border-amber-200 bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">
-                  {internalNotes.length} note{internalNotes.length === 1 ? "" : "s"}
+                  {internalNotes.length} note
+                  {internalNotes.length === 1 ? "" : "s"}
                 </span>
               </div>
 
@@ -1359,7 +1431,8 @@ export default function AdminTicketDetailsPage() {
               <div className="mt-4 max-h-64 space-y-3 overflow-y-auto">
                 {internalNotes.length === 0 ? (
                   <p className="rounded-xl border border-dashed border-amber-200 bg-white/70 p-3 text-center text-xs text-gray-500">
-                    No internal notes yet. Use internal notes to record investigation details or handoffs.
+                    No internal notes yet. Use internal notes to record
+                    investigation details or handoffs.
                   </p>
                 ) : (
                   internalNotes.map((note, index) => (
@@ -1444,7 +1517,9 @@ export default function AdminTicketDetailsPage() {
             <section className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm">
               <div className="flex items-center gap-2">
                 <UserRound size={17} className="text-[#e76577]" />
-                <h2 className="font-semibold text-gray-900">Activity History</h2>
+                <h2 className="font-semibold text-gray-900">
+                  Activity History
+                </h2>
               </div>
 
               <div className="mt-4 space-y-4">

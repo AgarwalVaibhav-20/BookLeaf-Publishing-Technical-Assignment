@@ -32,13 +32,19 @@
 
 ### 👥 Test Login Accounts
 
-| Role | Email | Password | Access Level & Features |
-| :--- | :--- | :--- | :--- |
-| **Admin (Operations)** | `exampple@gmail.com` | `password123` | Full access to ticket triage queue, AI response drafting, priority overrides, staff assignments, and internal notes. |
-| **Author 1 (Active)** | `priya.sharma@email.com` | `password123` | Author of *Whispers of the Ganges* (Published, ₹3,570 pending royalty) & *The Saffron Diaries* (₹0 pending). |
-| **Author 2 (Tech)** | `rohit.kapoor@email.com` | `password123` | Author of *Code & Karma* (Self-Help / Tech, published). |
-| **Author 3 (Production)** | `arjun.malhotra@email.com` | `password123` | Author with books currently in typesetting/production and active distribution queries. |
-| **Any Seeded Author** | `<author.email>` from `bookleaf_sample_data.json` | `password123` | Dynamic on-demand provisioning for any author email in the seed dataset. |
+> **Note**: Test credentials are also displayed directly on the **[Sign In Page](http://localhost:3000/login)** with **1-click autofill buttons** for rapid evaluation.
+
+| Role | Name | Email | Password | Catalog Status |
+| :--- | :--- | :--- | :--- | :--- |
+| **Admin** | Operations Lead | `exampple@gmail.com` | `password123` | Full access to ticket queue, AI draft generator, priority overrides & internal notes |
+| **Author** | Priya Sharma | `priya.sharma@email.com` | `password123` | *Whispers of the Ganges* (₹3,570 pending royalty) & *The Saffron Diaries* |
+| **Author** | Rohit Kapoor | `rohit.kapoor@email.com` | `password123` | *Code & Karma* (Self-Help / Tech, published) & *Startup Sutra* |
+| **Author** | Arjun Malhotra | `arjun.malhotra@email.com` | `password123` | *Turban Tales* & active distribution queries |
+| **Author** | Ananya Reddy | `ananya.reddy@email.com` | `password123` | *Between Two Temples* (Historical Fiction) |
+| **Author** | Vikram Joshi | `vikram.joshi@email.com` | `password123` | *Debugging Life* & *The Last Monsoon* (Poetry) |
+| **Author** | Kavita Deshmukh | `kavita.deshmukh@email.com` | `password123` | *Little Stars of Sahyadri* & *Flavors of Maharashtra* |
+| **Author** | Suresh | `suresh@gmail.com` | `password123` | Active queries & multiple registered titles |
+| **Any Author**| Seeded Author | `<any.author.email>` | `password123` | Auto-provisions from `bookleaf_sample_data.json` upon first login |
 
 ---
 
@@ -339,7 +345,7 @@ NEXT_PUBLIC_SOCKET_URL="http://localhost:4001"
 SOCKET_INTERNAL_SECRET="bookleaf-socket-secret-key-2026"
 ```
 
-### 3. Run the Development Servers
+### 3. Run the Development Servers (Local)
 In your primary terminal, start Next.js:
 ```bash
 npm run dev
@@ -351,6 +357,24 @@ npm run socket
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+---
+
+### 🚀 8.4 Deploying to Vercel (Production)
+
+This project is built and optimized for **Vercel Serverless Deployment**:
+
+1. **Import Repository**: Connect your GitHub repository to Vercel.
+2. **Build Command**: Standard `npm run build` (`next build`) runs automatically.
+3. **Environment Variables**: Add the following in your **Vercel Project Settings > Environment Variables**:
+   * `MONGODB_URI`: Your MongoDB Atlas connection string.
+   * `JWT_SECRET`: A secure random string for JWT signing.
+   * `GEMINI_API_KEY`: Your Google Gemini API key.
+   * `NEXT_PUBLIC_APP_URL`: Your Vercel domain (e.g., `https://your-project.vercel.app`).
+   * `NEXT_PUBLIC_SOCKET_URL` *(Optional)*: URL of a standalone WebSocket instance (e.g. hosted on Render/Railway).
+4. **Serverless Real-Time Fallback**:
+   * Because Vercel functions are stateless/serverless, background persistent Node processes like `npm run socket` do not run on Vercel.
+   * **Automatic Built-in Resilience**: The portal includes an **automatic 6-second polling fallback** in `NotificationProvider.tsx`, author ticket conversations, and admin triage screens. The entire portal, AI triage, notifications, and chat work out of the box on Vercel without requiring any separate socket server.
 
 ---
 
