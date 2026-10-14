@@ -43,16 +43,62 @@
 
 ## 🖼️ 2. Visual Walkthrough & Screenshots
 
-All high-resolution application screenshots are stored in [`public/screenshots/`](./public/screenshots/):
+All high-resolution production application screenshots are stored in [`public/screenshots/`](./public/screenshots/):
 
-| View | Screenshot | Description |
-| :--- | :---: | :--- |
-| **Author Dashboard** | `public/screenshots/author-dashboard.png` | Comprehensive dashboard showing copies sold, royalties earned/pending, quick ticket launcher, and real-time alerts. |
-| **My Books & Royalties** | `public/screenshots/my-books.png` | Published catalog showing ISBN, MRP, 80/20 royalty split earnings, payment cycle statuses, and stock availability. |
-| **Support Query Submission** | `public/screenshots/ticket-submission.png` | Query submission form with book-specific linkage, category selector, file attachment mock, and live AI classification. |
-| **Admin Ticket Triage Queue** | `public/screenshots/admin-ticket-queue.png` | Filterable operations queue (Status, Category, Priority, Date) highlighting urgent queries and response times. |
-| **AI Response Drafter** | `public/screenshots/ai-draft-response.png` | Policy-grounded Gemini response generator with one-click insertion into the reply box and admin manual edit mode. |
-| **Interactive Notification Center** | `public/screenshots/notification-center.png` | Live dropdown popover showing unread badges, message snippets, direct ticket navigation, and "Mark all read". |
+### 2.1 Authentication & Onboarding
+#### 🔐 Sign In & Role-Based Access Control
+Clean, branded portal supporting secure dual-role access (Authors and Operations Admins) powered by JWT HTTP-only cookies and bcrypt password hashing.
+
+![BookLeaf Sign In Portal](./public/screenshots/screenshot1.png)
+
+---
+
+### 2.2 Author Experience
+#### 📊 Author Publishing & Royalty Dashboard
+Personalized dashboard displaying author publication overview, total books in catalogue, copies sold, lifetime royalties earned, and pending payouts with a quick ticket creation launcher.
+
+![Author Dashboard Overview](./public/screenshots/author-dashboard.png)
+
+#### 📚 Author Book Catalogue & Royalty Tracker
+Catalog view of published works featuring ISBN, publication dates, MRP, sales count, earned royalties, and real-time payout statuses.
+
+![Author Book Catalogue](./public/screenshots/author-books.png)
+
+---
+
+### 2.3 Operations & Support Admin Experience
+#### 📈 Support Operations Dashboard & Live Analytics
+Comprehensive analytics dashboard showing real-time ticket distribution by category, lifecycle status breakdown, overall resolution rates, active workload, period filters (All Time, Last 30 Days, Last 7 Days), and working **Excel (CSV)** export.
+
+![Admin Support Operations Dashboard](./public/screenshots/screenshot2.png)
+
+#### 🎫 Support Tickets Queue & Live Triage
+Multi-filter operations queue allowing agents to filter by keyword, status, priority, and category. Includes live inline status updates, priority escalation tags, and direct access to AI-powered responses.
+
+![Admin Support Tickets Queue](./public/screenshots/screenshot3.png)
+
+#### 🔔 Real-time Interactive Notification Center
+Floating dropdown popover with live unread indicators, message previews, ticket identifiers, relative timestamps, and one-click navigation to ongoing conversations.
+
+![Interactive Notification Center](./public/screenshots/screenshot4.png)
+
+---
+
+### 2.4 Catalog & Publication Management
+#### 👥 Author Directory Management
+Centralized author directory showing contact details, location, registered book counts, joined dates, and profile management controls.
+
+![Authors Management Directory](./public/screenshots/screenshot5.png)
+
+#### ➕ Register New Author Modal
+Modal dialog to easily register new author profiles into the system with full validation.
+
+![Add New Author Modal](./public/screenshots/screenshot6.png)
+
+#### 📖 Add New Book with Dynamic Royalty Calculation
+Modal dialog for creating and updating books. Features **dynamic auto-calculation**: typing *Royalty Per Copy* and *Copies Sold* instantly calculates *Total Royalty Earned* and *Royalty Pending*.
+
+![Add New Book & Royalty Auto-Calculation Modal](./public/screenshots/screenshot7.png)
 
 ---
 
