@@ -82,12 +82,12 @@ function Login() {
               >
                 Password
               </label>
-              <a
+              {/* <a
                 className="text-sm font-medium text-pink-600 hover:text-pink-700"
                 href="/forgot-password"
               >
                 forgot password?
-              </a>
+              </a> */}
             </div>
 
             <input
