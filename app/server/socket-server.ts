@@ -5,10 +5,10 @@ import { UserModel } from "../model/User";
 import dbConnect from "../lib/dbConnect";
 import { TicketModel } from "../model/Ticket";
 
-
 const PORT = Number(process.env.SOCKET_PORT || 4001);
 const INTERNAL_SECRET =
-  process.env.SOCKET_INTERNAL_SECRET || "replace_this_with_a_long_random_secret";
+  process.env.SOCKET_INTERNAL_SECRET ||
+  "replace_this_with_a_long_random_secret";
 
 const httpServer = createServer();
 const io = new Server(httpServer, {
@@ -198,20 +198,17 @@ httpServer.on("request", async (req, res) => {
 
     if (
       !payload.ticketMongoId ||
-      !["message:new", "ticket:updated", "ticket:new"].includes(payload.event || "")
+      !["message:new", "ticket:updated", "ticket:new"].includes(
+        payload.event || "",
+      )
     ) {
       res.writeHead(400);
       res.end("Invalid event");
       return;
     }
 
-    io.to(`ticket:${payload.ticketMongoId}`).emit(
-      payload.event!,
-      payload.data,
-    );
-    // Broadcast globally to trigger sidebar lights & title notifications for all active sessions
+    // Broadcast once to all connected clients (in-room and global listeners)
     io.emit(payload.event!, payload.data);
-
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ success: true }));
   } catch (error) {

@@ -311,19 +311,6 @@ export default function AdminTicketDetailsPage() {
         requestTicket().then((updated) => {
           setTicket(updated);
           setStatus(updated.status);
-          const msgs = updated.messages ?? [];
-          const lastMsg = msgs[msgs.length - 1];
-          if (lastMsg && lastMsg.senderRole === "Author") {
-            window.dispatchEvent(
-              new CustomEvent("bookleaf:new-message", {
-                detail: {
-                  sender: updated.author_name || "Author",
-                  text: lastMsg.message,
-                  ticketId,
-                },
-              }),
-            );
-          }
         });
       }
     }

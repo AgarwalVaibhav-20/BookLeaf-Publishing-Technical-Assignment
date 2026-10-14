@@ -21,9 +21,12 @@ export interface NotificationItem {
 }
 
 interface NewMessagePayload {
+  messageId?: string;
+  key?: string;
   sender?: string;
   text?: string;
   ticketId?: string;
+  senderRole?: string;
 }
 
 interface NotificationContextType {
@@ -78,6 +81,16 @@ function playNotificationChime() {
   }
 }
 
+function computeMessageKey(info?: NewMessagePayload): string {
+  if (!info) return `unknown-${Date.now()}`;
+  if (info.key) return info.key;
+  if (info.messageId) return `id:${info.messageId}`;
+  const tId = info.ticketId || "global";
+  const sender = (info.sender || "support").trim().toLowerCase();
+  const textSnippet = (info.text || "").trim().slice(0, 50).replace(/\s+/g, " ");
+  return `${tId}:${sender}:${textSnippet}`;
+}
+
 export function NotificationProvider({
   children,
 }: {
@@ -88,6 +101,7 @@ export function NotificationProvider({
   const [latestSender, setLatestSender] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const originalTitleRef = useRef<string>("");
+  const processedKeysRef = useRef<Map<string, number>>(new Map());
 
   // Store original title on mount
   useEffect(() => {
@@ -128,6 +142,46 @@ export function NotificationProvider({
 
   const triggerNewMessage = useCallback(
     (info?: NewMessagePayload, notifyTabs = true) => {
+      if (typeof window === "undefined") return;
+
+      const pathname = window.location.pathname;
+      const isAdminRoute = pathname.startsWith("/admin");
+      const isAuthorRoute = pathname.startsWith("/author");
+      const role = (info?.senderRole || "").toLowerCase();
+
+      // Don't notify the admin if the admin themselves sent the message
+      if (
+        isAdminRoute &&
+        (role === "admin" || (info?.sender && info.sender.toLowerCase().includes("support")))
+      ) {
+        return;
+      }
+      // Don't notify the author if the author themselves sent the message
+      if (
+        isAuthorRoute &&
+        (role === "author" || (info?.sender && info.sender.toLowerCase().includes("author")))
+      ) {
+        return;
+      }
+
+      const key = computeMessageKey(info);
+      const now = Date.now();
+
+      // Expire keys older than 45 seconds to keep memory bounded
+      if (processedKeysRef.current.size > 300) {
+        for (const [k, time] of processedKeysRef.current.entries()) {
+          if (now - time > 45000) {
+            processedKeysRef.current.delete(k);
+          }
+        }
+      }
+
+      // STRICT DEDUPLICATION: If this message was already handled in the last 45s, skip
+      if (processedKeysRef.current.has(key)) {
+        return;
+      }
+      processedKeysRef.current.set(key, now);
+
       setHasUnreadMessage(true);
       setUnreadCount((prev) => prev + 1);
 
@@ -135,8 +189,10 @@ export function NotificationProvider({
       setLatestSender(sender);
 
       // Add to notifications list
+      const newItemId =
+        info?.messageId || `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const newItem: NotificationItem = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        id: newItemId,
         sender,
         text: info?.text || "New message received",
         ticketId: info?.ticketId,
@@ -144,13 +200,17 @@ export function NotificationProvider({
         read: false,
       };
 
-      setNotifications((prev) => [newItem, ...prev.slice(0, 19)]);
+      setNotifications((prev) => [
+        newItem,
+        ...prev.filter((n) => n.id !== newItemId).slice(0, 19),
+      ]);
 
       // Play soft notification sound
       playNotificationChime();
 
-      // Toast alert with high-contrast visible text
+      // Toast alert: using explicit id prevents duplicate Sonner toasts from stacking
       toast.info(`New message from ${sender}`, {
+        id: `toast-${key}`,
         description: info?.text
           ? info.text.length > 70
             ? `${info.text.substring(0, 70)}...`
@@ -163,15 +223,18 @@ export function NotificationProvider({
       });
 
       // Synchronize across open browser tabs via localStorage
-      if (notifyTabs && typeof window !== "undefined") {
+      if (notifyTabs) {
         try {
           localStorage.setItem(
             "bookleaf_unread_ping",
             JSON.stringify({
-              time: Date.now(),
+              time: now,
+              key,
+              messageId: info?.messageId,
               sender,
               text: info?.text,
               ticketId: info?.ticketId,
+              senderRole: info?.senderRole,
             }),
           );
         } catch {
@@ -237,36 +300,27 @@ export function NotificationProvider({
 
     function handleSocketNewMessage(data: any) {
       const msg = data?.message || data;
-      const pathname = window.location.pathname;
-      const isAdminRoute = pathname.startsWith("/admin");
-      const isAuthorRoute = pathname.startsWith("/author");
-
-      // Don't notify the admin if the admin themselves sent the message
-      if (isAdminRoute && msg?.senderRole === "Admin") {
-        return;
-      }
-      // Don't notify the author if the author themselves sent the message
-      if (isAuthorRoute && msg?.senderRole === "Author") {
-        return;
-      }
-
       triggerNewMessage({
+        messageId: msg?._id || msg?.id,
         sender: msg?.sender,
         text: msg?.message || msg?.text,
         ticketId: data?.ticket_id || data?.ticketId,
+        senderRole: msg?.senderRole,
       });
     }
 
     socket.on("message:new", handleSocketNewMessage);
     socket.on("ticket:new", handleSocketNewMessage);
 
-    // Custom window event (usable by any page/component)
+    // Custom window event (usable by manual test triggers or external hooks)
     function handleCustomEvent(e: Event) {
       const detail = (e as CustomEvent).detail;
       triggerNewMessage({
+        messageId: detail?.messageId,
         sender: detail?.sender,
         text: detail?.text || detail?.message,
         ticketId: detail?.ticketId,
+        senderRole: detail?.senderRole,
       });
     }
 
@@ -277,6 +331,13 @@ export function NotificationProvider({
       if (e.key === "bookleaf_unread_ping" && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue);
+          // If already processed on this tab or stale, skip
+          if (parsed.key && processedKeysRef.current.has(parsed.key)) {
+            return;
+          }
+          if (Date.now() - (parsed.time || 0) > 10000) {
+            return;
+          }
           triggerNewMessage(parsed, false);
         } catch {
           // ignore
@@ -286,34 +347,48 @@ export function NotificationProvider({
 
     window.addEventListener("storage", handleStorage);
 
-    // Initial load of latest messages to populate the notifications dropdown list
+    // Initial load of latest messages to populate dropdown and prime the deduplication cache
     fetch("/api/tickets", { credentials: "include", cache: "no-store" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (!data?.tickets || !Array.isArray(data.tickets)) return;
         const initialList: NotificationItem[] = [];
 
-        for (const t of data.tickets.slice(0, 10)) {
+        for (const t of data.tickets) {
           const msgs = t.messages || [];
-          if (msgs.length > 0) {
-            const last = msgs[msgs.length - 1];
-            initialList.push({
-              id: last._id || `${t.ticket_id}-${Date.now()}`,
-              sender: last.sender || "Support",
-              text: last.message || "New message received",
-              ticketId: t.ticket_id || t._id,
-              createdAt: last.createdAt || t.updatedAt || new Date().toISOString(),
-              read: true,
-            });
-          } else {
-            initialList.push({
-              id: `${t.ticket_id}-created`,
-              sender: t.author_name || "Support",
-              text: t.message || t.subject || "Support query created",
-              ticketId: t.ticket_id || t._id,
-              createdAt: t.createdAt || new Date().toISOString(),
-              read: true,
-            });
+          for (const m of msgs) {
+            if (m._id) {
+              processedKeysRef.current.set(`id:${m._id}`, Date.now());
+            }
+            if (t.ticket_id && m.sender && m.message) {
+              const textSnippet = m.message.trim().slice(0, 50).replace(/\s+/g, " ");
+              processedKeysRef.current.set(
+                `${t.ticket_id}:${m.sender.toLowerCase()}:${textSnippet}`,
+                Date.now(),
+              );
+            }
+          }
+          if (initialList.length < 10) {
+            if (msgs.length > 0) {
+              const last = msgs[msgs.length - 1];
+              initialList.push({
+                id: last._id || `${t.ticket_id}-${Date.now()}`,
+                sender: last.sender || "Support",
+                text: last.message || "New message received",
+                ticketId: t.ticket_id || t._id,
+                createdAt: last.createdAt || t.updatedAt || new Date().toISOString(),
+                read: true,
+              });
+            } else {
+              initialList.push({
+                id: `${t.ticket_id}-created`,
+                sender: t.author_name || "Support",
+                text: t.message || t.subject || "Support query created",
+                ticketId: t.ticket_id || t._id,
+                createdAt: t.createdAt || new Date().toISOString(),
+                read: true,
+              });
+            }
           }
         }
         setNotifications(initialList);
@@ -321,9 +396,6 @@ export function NotificationProvider({
       .catch(() => {});
 
     // Polling fallback every 6 seconds to ensure reliable notifications across network setups
-    let previousTotalMessages = -1;
-    let initialLoad = true;
-
     const pollInterval = setInterval(async () => {
       try {
         const res = await fetch("/api/tickets", {
@@ -334,60 +406,33 @@ export function NotificationProvider({
         const data = await res.json();
         const tickets = data.tickets || [];
 
-        let currentTotal = 0;
-        let latestMsgObj: any = null;
-
         for (const t of tickets) {
-          const count = (t.messages || []).length + 1;
-          currentTotal += count;
+          const msgs = t.messages || [];
+          for (const m of msgs) {
+            const mId = m._id ? `id:${m._id}` : null;
+            const textSnippet = (m.message || "")
+              .trim()
+              .slice(0, 50)
+              .replace(/\s+/g, " ");
+            const fallbackKey = `${t.ticket_id}:${(m.sender || "").toLowerCase()}:${textSnippet}`;
+            const keyToCheck = mId || fallbackKey;
 
-          if (t.messages && t.messages.length > 0) {
-            const last = t.messages[t.messages.length - 1];
-            if (
-              !latestMsgObj ||
-              new Date(last.createdAt) > new Date(latestMsgObj.createdAt)
-            ) {
-              latestMsgObj = { ...last, ticket_id: t.ticket_id };
-            }
-          } else {
-            if (
-              !latestMsgObj ||
-              new Date(t.createdAt) > new Date(latestMsgObj.createdAt)
-            ) {
-              latestMsgObj = {
-                sender: t.author_name,
-                senderRole: "Author",
-                message: t.message,
-                createdAt: t.createdAt,
-                ticket_id: t.ticket_id,
-              };
+            if (!processedKeysRef.current.has(keyToCheck)) {
+              // Only alert if created in the last 2 minutes
+              const msgTime = new Date(m.createdAt).getTime();
+              if (Date.now() - msgTime < 120000) {
+                triggerNewMessage({
+                  messageId: m._id,
+                  sender: m.sender,
+                  text: m.message,
+                  ticketId: t.ticket_id,
+                  senderRole: m.senderRole,
+                });
+              } else {
+                processedKeysRef.current.set(keyToCheck, Date.now());
+              }
             }
           }
-        }
-
-        if (initialLoad) {
-          previousTotalMessages = currentTotal;
-          initialLoad = false;
-          return;
-        }
-
-        if (currentTotal > previousTotalMessages && latestMsgObj) {
-          const pathname = window.location.pathname;
-          const isAdminRoute = pathname.startsWith("/admin");
-          const isAuthorRoute = pathname.startsWith("/author");
-
-          if (
-            (isAdminRoute && latestMsgObj.senderRole === "Author") ||
-            (isAuthorRoute && latestMsgObj.senderRole === "Admin") ||
-            (!isAdminRoute && !isAuthorRoute)
-          ) {
-            triggerNewMessage({
-              sender: latestMsgObj.sender,
-              text: latestMsgObj.message,
-              ticketId: latestMsgObj.ticket_id,
-            });
-          }
-          previousTotalMessages = currentTotal;
         }
       } catch {
         // Ignore polling errors

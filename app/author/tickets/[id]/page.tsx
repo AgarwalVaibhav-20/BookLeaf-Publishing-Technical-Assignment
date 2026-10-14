@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { socket } from "@/app/lib/socket";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   BookOpen,
@@ -105,31 +106,7 @@ export default function AuthorTicketDetailsPage() {
           setTicket(data);
           setError("");
           setLastUpdated(new Date());
-
-          const msgs = data.messages ?? [];
-          if (
-            prevMsgCountRef.current !== -1 &&
-            msgs.length > prevMsgCountRef.current
-          ) {
-            const latest = msgs[msgs.length - 1];
-            if (
-              latest &&
-              (latest.senderRole === "Admin" ||
-                (latest.sender &&
-                  latest.sender.toLowerCase().includes("support")))
-            ) {
-              window.dispatchEvent(
-                new CustomEvent("bookleaf:new-message", {
-                  detail: {
-                    sender: "BookLeaf Support",
-                    text: latest.message || latest.content,
-                    ticketId,
-                  },
-                }),
-              );
-            }
-          }
-          prevMsgCountRef.current = msgs.length;
+          prevMsgCountRef.current = (data.messages ?? []).length;
         })
         .catch((err: unknown) => {
           if (active) {
@@ -241,6 +218,7 @@ export default function AuthorTicketDetailsPage() {
       }
 
       setReply("");
+      toast.success("Message sent successfully!");
       const updatedTicket = await requestTicket();
       setTicket(updatedTicket);
       setLastUpdated(new Date());
