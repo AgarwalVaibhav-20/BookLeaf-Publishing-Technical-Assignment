@@ -1,0 +1,211 @@
+{
+  "name": "BookLeaf Royalty Summary & AI Notification Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "bookleaf-royalty-summary",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "node-webhook-trigger",
+      "name": "1. Webhook (Bubble Trigger)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ],
+      "webhookId": "bookleaf-royalty-summary"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "auth-check",
+              "leftValue": "={{ $json.headers['x-webhook-secret'] || $json.body.secret_token }}",
+              "rightValue": "bookleaf_secure_token_2025",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-auth-guard",
+      "name": "2. Auth Guard (Verify Secret)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "{\n  \"status\": \"Failed\",\n  \"error_message\": \"401 Unauthorized: Invalid or missing X-Webhook-Secret header.\",\n  \"email_content\": null\n}",
+        "options": {
+          "responseCode": 401
+        }
+      },
+      "id": "node-unauthorized-response",
+      "name": "2b. 401 Unauthorized",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare data and craft AI Prompt grounded in BookLeaf policies\nconst payload = $json.body || $json;\n\nconst authorId = payload.author_id || 'N/A';\nconst authorName = payload.author_name || 'Esteemed Author';\nconst authorEmail = payload.author_email || '';\nconst authorCity = payload.author_city || '';\nconst totalEarned = Number(payload.total_earned || 0);\nconst totalPaid = Number(payload.total_paid || 0);\nconst totalPending = Number(payload.total_pending || 0);\nconst books = payload.books || [];\n\n// Determine payout cycle explanation based on BookLeaf 45-day window policy\nlet payoutPolicyText = '';\nif (totalPending > 0) {\n  payoutPolicyText = `BookLeaf calculates and processes royalties on a quarterly cycle. Under our standard policy, all pending royalties for the current quarterly cycle will be credited directly to your registered bank account within the standard 45-day window following the quarter end.`;\n} else {\n  payoutPolicyText = `All royalties for your published titles are fully settled and up to date. Thank you for your continued partnership!`;\n}\n\n// Format books summary for prompt\nlet booksText = '';\nif (Array.isArray(books) && books.length > 0) {\n  booksText = books.map(b => {\n    if (b.status && b.status.includes('In Production')) {\n      return `- ${b.title}: Currently in production (${b.status}). Sales and royalty tracking will begin once live.`;\n    }\n    return `- ${b.title} (ISBN: ${b.isbn || 'N/A'}): ${b.total_copies_sold || 0} copies sold. Earned: ₹${b.total_royalty_earned || 0}, Paid: ₹${b.royalty_paid || 0}, Pending: ₹${b.royalty_pending || 0}. Last payout: ${b.last_royalty_payout_date || 'N/A'}.`;\n  }).join('\\n');\n} else if (payload.books_summary) {\n  booksText = payload.books_summary;\n} else {\n  booksText = 'All active titles registered with BookLeaf Publishing.';\n}\n\nconst systemPrompt = `You are the Author Royalty Communications Specialist at BookLeaf Publishing.\nYour task is to write a warm, professional, human-readable royalty summary email to the author.\n\nGuidelines & Knowledge Base Policies:\n1. Personalised greeting using the author's name.\n2. Clear summary of their published books, copies sold, and earnings.\n3. Clear financial breakdown: Total Earned, Total Paid, and Total Pending in INR (₹).\n4. If there is a pending balance, explain the payout schedule (quarterly cycle + 45-day processing window).\n5. If pending balance is 0, give an appreciative positive acknowledgement.\n6. If any book is in production (e.g., cover design or typesetting), provide a brief encouraging status update.\n7. Closing must be warm, inspiring, and professional, signed off by \"The BookLeaf Publishing Author Success Team\".\n8. Output ONLY the email text with subject line. Do not include markdown meta-commentary.`;\n\nconst userPrompt = `Author Name: ${authorName}\nCity: ${authorCity}\nEmail: ${authorEmail}\nTotal Lifetime Earned: ₹${totalEarned}\nTotal Paid: ₹${totalPaid}\nTotal Pending: ₹${totalPending}\n\nBooks Details:\n${booksText}\n\nPolicy Context:\n${payoutPolicyText}`;\n\nreturn {\n  author_id: authorId,\n  author_name: authorName,\n  author_email: authorEmail,\n  total_earned: totalEarned,\n  total_paid: totalPaid,\n  total_pending: totalPending,\n  system_prompt: systemPrompt,\n  user_prompt: userPrompt,\n  raw_payload: payload\n};"
+      },
+      "id": "node-data-preprocessor",
+      "name": "3. Data Pre-Processor & Policy Engine",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={{ $env.GEMINI_API_KEY || 'YOUR_GEMINI_API_KEY_HERE' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": {{ JSON.stringify($json.system_prompt + \"\\n\\n\" + $json.user_prompt) }}\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"temperature\": 0.4,\n    \"maxOutputTokens\": 800\n  }\n}",
+        "options": {
+          "timeout": 15000
+        }
+      },
+      "id": "node-ai-generator",
+      "name": "4. AI Generation (Gemini LLM)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        940,
+        220
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format output or handle fallback if AI API failed\nconst pre = $('3. Data Pre-Processor & Policy Engine').first().json;\nconst aiResponse = $input.first().json;\n\nlet generatedEmail = '';\nlet status = 'Sent';\nlet errorMessage = null;\n\nif (aiResponse && aiResponse.candidates && aiResponse.candidates[0] && aiResponse.candidates[0].content && aiResponse.candidates[0].content.parts[0]) {\n  generatedEmail = aiResponse.candidates[0].content.parts[0].text;\n} else if (aiResponse && aiResponse.error) {\n  status = 'Failed';\n  errorMessage = aiResponse.error.message || 'AI API returned an error';\n  // Provide graceful fallback email template\n  generatedEmail = `Subject: BookLeaf Publishing — Royalty Account Statement for ${pre.author_name}\\n\\nDear ${pre.author_name},\\n\\nHere is your official royalty summary across your registered titles with BookLeaf Publishing:\\n- Total Royalty Earned: ₹${pre.total_earned}\\n- Royalty Paid: ₹${pre.total_paid}\\n- Royalty Pending: ₹${pre.total_pending}\\n\\n${pre.total_pending > 0 ? 'Your pending royalties are being processed within our standard quarterly 45-day window.' : 'All your royalties are fully settled.'}\\n\\nWarm regards,\\nThe BookLeaf Publishing Team`;\n} else {\n  // Default fallback\n  status = 'Sent';\n  generatedEmail = `Subject: BookLeaf Publishing — Royalty Statement for ${pre.author_name}\\n\\nDear ${pre.author_name},\\n\\nWe are pleased to share your latest royalty summary statement:\\n- Lifetime Royalties Earned: ₹${pre.total_earned}\\n- Settled Royalties: ₹${pre.total_paid}\\n- Current Pending Balance: ₹${pre.total_pending}\\n\\n${pre.total_pending > 0 ? 'Pending disbursements are scheduled under our quarterly 45-day cycle.' : 'All titles are fully settled.'}\\n\\nWarm regards,\\nBookLeaf Publishing Author Success Team`;\n}\n\nreturn {\n  status: status,\n  author_id: pre.author_id,\n  author_name: pre.author_name,\n  author_email: pre.author_email,\n  email_content: generatedEmail,\n  error_message: errorMessage,\n  sent_at: new Date().toISOString()\n};"
+      },
+      "id": "node-response-formatter",
+      "name": "5. Response Formatter & Error Handler",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1180,
+        220
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": {{ JSON.stringify($json.status) }},\n  \"author_id\": {{ JSON.stringify($json.author_id) }},\n  \"author_name\": {{ JSON.stringify($json.author_name) }},\n  \"email_content\": {{ JSON.stringify($json.email_content) }},\n  \"error_message\": {{ JSON.stringify($json.error_message) }},\n  \"sent_at\": {{ JSON.stringify($json.sent_at) }}\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "node-respond-to-bubble",
+      "name": "6. Respond to Bubble (Synchronous Callback)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1420,
+        220
+      ]
+    }
+  ],
+  "connections": {
+    "1. Webhook (Bubble Trigger)": {
+      "main": [
+        [
+          {
+            "node": "2. Auth Guard (Verify Secret)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Auth Guard (Verify Secret)": {
+      "main": [
+        [
+          {
+            "node": "3. Data Pre-Processor & Policy Engine",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "2b. 401 Unauthorized",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Data Pre-Processor & Policy Engine": {
+      "main": [
+        [
+          {
+            "node": "4. AI Generation (Gemini LLM)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. AI Generation (Gemini LLM)": {
+      "main": [
+        [
+          {
+            "node": "5. Response Formatter & Error Handler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. Response Formatter & Error Handler": {
+      "main": [
+        [
+          {
+            "node": "6. Respond to Bubble (Synchronous Callback)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
